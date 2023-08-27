@@ -737,6 +737,7 @@ dependencies = [
 name = "temp_project"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "tokio",
  "warp",
 ]
