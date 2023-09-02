@@ -1,7 +1,7 @@
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 struct MyData {
     field1: String,
     field2: i32,
@@ -14,6 +14,8 @@ async fn main() {
         .and(warp::post())
         .and(warp::body::json()) // Automatically deserialize JSON data
         .map(|data: MyData| {
+            // Print the received data to the console
+            println!("Received data: {:?}", data);
             // Handle the received data
             warp::reply::json(&data) // Echo the received data as JSON
         });
