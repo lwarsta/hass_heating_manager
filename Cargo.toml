@@ -1,11 +1,21 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [package]
-name = "temp_project"
+name = "heating_manager"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.dev]
+opt-level = 0    # Optimization level 0 for debug builds
+debug = true     # Include debug symbols
+panic = "abort"  # Abort on panic for better debugging
+
+[profile.release]
+opt-level = 2    # Optimization level 2 for release builds (higher performance)
+lto = true       # Enable link-time optimization for release builds
+panic = "abort"  # Abort on panic for better debugging
 
 [dependencies]
 warp = "0.3"
+serde_yaml = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
