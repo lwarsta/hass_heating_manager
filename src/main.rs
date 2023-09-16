@@ -1,15 +1,17 @@
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use serde_yaml;
 use serde_json;
 use std::fs;
 
 // Incoming data from Home Assistant UI.
 #[derive(Deserialize, Serialize, Debug)]
-struct MyData {
-    field1: String,
-    field2: i32,
+struct DataHassIn {
+    temperature_outside: f32,
+    temperature_inside: f32,
+	price_electricity: f32,
+	device_plug: bool,
+	device_fire_alarm: bool,
 }
 
 // Configuration options saved into a json file in the addon data directory.
@@ -111,7 +113,7 @@ async fn main() {
     let my_route = warp::path!("my_route" / "post")
         .and(warp::post())
         .and(warp::body::json()) // Automatically deserialize JSON data
-        .map(|data: MyData| {
+        .map(|data: DataHassIn| {
             // Print the received data to the console
             println!("Received data: {:?}", data);
             // Handle the received data
