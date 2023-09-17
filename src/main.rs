@@ -2,16 +2,22 @@ use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use serde_json;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, AUTHORIZATION};
+use serde_json::json;
 use std::fs;
+use serde::ser::StdError;
 
-// Incoming data from Home Assistant UI.
+// Data structure for messaging between Home Assistant UI.
 #[derive(Deserialize, Serialize, Debug)]
-struct DataHassIn {
-    temperature_outside: f32,
-    temperature_inside: f32,
-	price_electricity: f32,
-	device_plug: bool,
-	device_fire_alarm: bool,
+struct DataHass {
+	entity_cat: i32,
+	entity_id: String,
+	data_type: i32,
+	data_unit: String,
+	data_str: String,
+	data_int: i32,
+	data_float: f32,
+	data_bool: bool,
 }
 
 // Configuration options saved into a json file in the addon data directory.
@@ -51,9 +57,42 @@ fn print_directory_contents(dir_path: &str) {
     }
 }
 
+async fn make_post_request(url: &str, data: &str, token: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Construct the request headers
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers.insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&format!("{}", token)).unwrap(),
+    );
+
+    // Construct the payload as a JSON object
+    let payload = json!({
+        "title": "REST Call Received",
+        "message": format!("data: {}", data),
+    });
+	
+    // Send the POST request
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .headers(headers)
+        .json(&payload) // Use the correct json! macro
+        .send()
+        .await?;
+
+    // Check the response status
+    if let Err(err) = response.error_for_status() {
+        eprintln!("Error making POST request: {:?}", err);
+        return Err(Box::new(err));
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
-    // Uncomment and use the following line for checking directory contents.
+    // Uncomment and use the following line for checking directory contents
     // print_directory_contents("/data");
 	
     // Define the path to the options.json file
@@ -102,7 +141,7 @@ async fn main() {
     println!("listen_ip: {}", options.listen_ip);
     println!("port: {}", options.port);
     println!("hass_token: {}", masked_token);
-
+	
     // Combine IP address and port into a single string
     let ip_port = format!("{}:{}", listen_ip, port);
 
@@ -110,10 +149,10 @@ async fn main() {
     let ip_address: SocketAddr = ip_port.parse().unwrap();
 	
     // Define a filter for the specific path and POST method
-    let my_route = warp::path!("my_route" / "post")
+    let my_route = warp::path!("from_hass" / "post")
         .and(warp::post())
         .and(warp::body::json()) // Automatically deserialize JSON data
-        .map(|data: DataHassIn| {
+        .map(|data: DataHass| {
             // Print the received data to the console
             println!("Received data: {:?}", data);
             // Handle the received data
@@ -123,6 +162,23 @@ async fn main() {
     // Print a message indicating that the server is starting
     println!("Server started at {}", ip_address);
 
+    // Make a test POST call to the Home Assistant User Interface.
+    println!("Make test POST call to the Home Assistant User Interface:");
+    let url_hass = "http://homeassistant.local:8123/api/services/persistent_notification/create";
+    let data_hass = "{
+		\"entity_cat\": 1, 
+		\"entity_id\": \"0001\", 
+		\"data_type\": 2, 
+		\"data_unit\": \"degree\", 
+		\"data_str\": \"\", 
+		\"data_int\": 0, 
+		\"data_float\": 10.0, 
+		\"data_bool\": false,
+		}";
+    if let Err(err) = make_post_request(url_hass, data_hass, hass_token).await {
+        eprintln!("Error making POST request: {:?}", err);
+    }
+
     // Combine filters and start the warp server
-	warp::serve(my_route).run(ip_address).await;
+    warp::serve(my_route).run(ip_address).await;
 }
