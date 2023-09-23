@@ -1,3 +1,4 @@
+use std::process::Command;
 use warp::{Filter, Reply};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -18,6 +19,7 @@ struct DataHass {
 	data_int: i32,
 	data_float: f32,
 	data_bool: bool,
+	date_time: String,
 }
 
 // Configuration options saved into a json file in the addon data directory.
@@ -90,10 +92,22 @@ async fn make_post_request(url: &str, data: &str, token: &str) -> Result<(), Box
     Ok(())
 }
 
+// Function to execute a Julia script.
+fn execute_julia_script() {
+    let output = Command::new("julia") // "/usr/local/julia/bin/julia"
+        .arg("/app/hello_world.jl") // Path to Julia script
+        .output()
+        .expect("Failed to execute Julia script.");
+
+    println!("Julia output: {}", String::from_utf8_lossy(&output.stdout));
+}
+
 #[tokio::main]
 async fn main() {
     // Uncomment and use the following line for checking directory contents
-    // print_directory_contents("/data");
+    print_directory_contents("/app");
+	print_directory_contents("/usr/local/julia");
+	print_directory_contents("/usr/local/bin");
 	
     // Define the path to the options.json file
     let options_path = "/data/options.json";
@@ -162,6 +176,9 @@ async fn main() {
     // Print a message indicating that the server is starting
     println!("Server started at {}", ip_address);
 
+    // Execute the Julia script
+    execute_julia_script();
+
     // Make a test POST call to the Home Assistant User Interface.
     println!("Make test POST call to the Home Assistant User Interface:");
     let url_hass = "http://homeassistant.local:8123/api/services/persistent_notification/create";
@@ -174,6 +191,7 @@ async fn main() {
 		\"data_int\": 0, 
 		\"data_float\": 10.0, 
 		\"data_bool\": false,
+		\"date_time\": \"2023-01-01T00:00:00Z\"
 		}";
     if let Err(err) = make_post_request(url_hass, data_hass, hass_token).await {
         eprintln!("Error making POST request: {:?}", err);
